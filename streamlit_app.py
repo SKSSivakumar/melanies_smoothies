@@ -1,5 +1,5 @@
 import streamlit as st
-from snowflake.snowpark.context import get_active_session
+#from snowflake.snowpark.context import get_active_session  -- existing code
 from snowflake.snowpark.functions import col
  
 # Title
@@ -7,8 +7,9 @@ st.title("🥤 Customize Your Smoothie! 🥤")
 st.write("Choose your favorite fruits and create your perfect blend.")
  
 # Session
-session = get_active_session()
- 
+#session = get_active_session() -- existing code
+ cnx = st.connection("snowflake")
+session = cnx.session()
 # Inputs
 name_on_order = st.text_input('Name on Smoothie')
  
