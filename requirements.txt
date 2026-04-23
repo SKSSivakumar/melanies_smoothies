@@ -1,0 +1,64 @@
+import streamlit as st
+from snowflake.snowpark.context import get_active_session
+from snowflake.snowpark.functions import col
+
+# -------------------------
+# TITLE
+# -------------------------
+st.title("🥤 Pending Smoothie Orders! 🥤")
+st.write("Orders that need to be filled")
+
+# -------------------------
+# SESSION
+# -------------------------
+session = get_active_session()
+
+# -------------------------
+# PENDING ORDERS
+# -------------------------
+st.subheader("Pending Orders")
+
+orders_df = session.table("smoothies.public.orders").filter(
+    (col("ORDER_FILLED") == False) | (col("ORDER_FILLED").is_null())
+)
+
+orders_pd = orders_df.to_pandas()
+
+# Editable table with checkbox
+edited_df = st.data_editor(
+    orders_pd,
+    column_config={
+        "ORDER_FILLED": st.column_config.CheckboxColumn(
+            "ORDER_FILLED",
+            default=False
+        )
+    },
+    disabled=[c for c in orders_pd.columns if c != "ORDER_FILLED"],
+    hide_index=True
+)
+
+# -------------------------
+# UPDATE BACK TO SNOWFLAKE
+# -------------------------
+if st.button("Update Orders"):
+
+    for _, row in edited_df.iterrows():
+
+        # Convert Python values safely for Snowflake SQL
+        if row["ORDER_FILLED"] is True:
+            filled_value = "TRUE"
+        elif row["ORDER_FILLED"] is False:
+            filled_value = "FALSE"
+        else:
+            filled_value = "NULL"
+
+        # Escape single quotes in name (important fix)
+        order_name = str(row["NAME_ON_ORDER"]).replace("'", "''")
+
+        session.sql(f"""
+            UPDATE smoothies.public.orders
+            SET ORDER_FILLED = {filled_value}
+            WHERE NAME_ON_ORDER = '{order_name}'
+        """).collect()
+
+    st.success("Orders updated successfully ✅")
